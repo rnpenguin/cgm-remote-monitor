@@ -14,13 +14,17 @@
 // Description: Basic web server to display data from Dexcom G4.  Requires a database that contains
 // the Dexcom SGV data.
 
+var fs = require('fs'),
+    mongoClient = require('mongodb').MongoClient,
+    moment = require('moment'),
+    nodeStatic = require('node-static'),
+    _ = require("lodash");
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // local variables
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var patientData = [];
 var now = new Date().getTime();
-var fs = require('fs');
-var mongoClient = require('mongodb').MongoClient;
 var cgmData = [];
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -29,7 +33,6 @@ var cgmData = [];
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var PORT = process.env.PORT || 1337;
 var server = require('http').createServer(function serverCreator(request, response) {
-    var nodeStatic = require('node-static');
     var staticServer = new nodeStatic.Server(".");
     var sys = require("sys");
     // Grab the URL requested by the client and parse any query options
@@ -98,18 +101,30 @@ function update() {
     now = Date.now();
 
     cgmData = [];
-    var earliest_data = now - TWO_DAYS;
+    var earliest_data = new Date(now - TWO_DAYS);
     mongoClient.connect(DB_URL, function (err, db) {
         if (err) throw err;
         var collection = db.collection(DB_COLLECTION);
 
-        collection.find({"date": {"$gte": earliest_data}}).toArray(function(err, results) {
-            results.forEach(function(element, index, array) {
+        collection.find({"timestamp": {"$gte": earliest_data}}).toArray(function(err, results) {
+
+            //currently adding too much data from android, I we need to dedupe to make the graph look ok
+            var prev = null;
+            var filtered = _.filter(results, function(entry) {
+                if (prev === entry.bg) {
+                    return false;
+                } else {
+                    prev = entry.bg;
+                    return true;
+                }
+            });
+
+            filtered.forEach(function(element, index, array) {
                 if (element) {
                     var obj = {};
-                    obj.y = element.sgv;
-                    obj.x = element.date;
-                    obj.d = element.dateString;
+                    obj.y = element.bg;
+                    obj.x = element.timestamp;
+                    obj.d = moment().format('D/MM/YYYY HH:mm:ss AA');//element.dateString;
                     cgmData.push(obj);
                 }
             });
