@@ -109,12 +109,15 @@ function update() {
         collection.find({"timestamp": {"$gte": earliest_data}}).toArray(function(err, results) {
 
             //currently adding too much data from android, I we need to dedupe to make the graph look ok
-            var prev = null;
+            var prevBG = 0,
+                prevTime = 0;
+
             var filtered = _.filter(results, function(entry) {
-                if (prev === entry.bg) {
+                if (prevBG === entry.bg && prevTime > 0 && (entry.timestamp - prevTime) < 5 * 60000) {
                     return false;
                 } else {
-                    prev = entry.bg;
+                    prevBG = entry.bg;
+                    prevTime = entry.timestamp;
                     return true;
                 }
             });
