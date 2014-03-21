@@ -84,9 +84,9 @@
 
     [class*='span']{float:left;min-height:1px;}
 
-    .span1{width: 30%; float: left; padding-top: 3%; line-height: 50%;}
+    .span1{float: left; padding-top: 3%; line-height: 50%;}
 
-    .span2{width: 40%; margin-left: 30%}
+    .span2{float: right}
 
 </style>
 <body>
@@ -101,7 +101,7 @@
                 <span id='watchers'>0</span> watcher(s)
             </div>
         </div>
-        <div class='span2 current' style='font-size: 800%'>
+        <div class='span2 current' style='font-size: 900%'>
             <div id='noButton'>
                 <span class='currentBG'>---</span>
                 <span class="currentDirection">-</span>
@@ -122,7 +122,7 @@
 </body>
 <script>
     var treatments;
-    var padding = { top: 20, right: 10, bottom: 60, left: 10};
+    var padding = { top: 20, right: 10, bottom: 80, left: 10};
     var opacity = {current: 1, DAY: 1, NIGHT: 0.8};
     var now = Date.now();
     var data = [];
