@@ -96,6 +96,24 @@ var DB = require('./database_configuration.json');
 var DB_URL = DB.url;
 var DB_COLLECTION = DB.collection;
 
+var dir2Char = {
+    'NONE': '&#8700;',
+    'DoubleUp': '&#8648;',
+    'SingleUp': '&#8593;',
+    'FortyFiveUp': '&#8599;',
+    'Flat': '&#8594;',
+    'FortyFiveDown': '&#8600;',
+    'SingleDown': '&#8595;',
+    'DoubleDown': '&#8650;',
+    'NOT COMPUTABLE': '-',
+    'RATE OUT OF RANGE': '&#8622;'
+};
+
+function directionToChar(direction) {
+    return dir2Char[direction] || '-';
+};
+
+
 function update() {
 
     now = Date.now();
@@ -127,6 +145,7 @@ function update() {
                     var obj = {};
                     obj.y = element.bg;
                     obj.x = element.timestamp;
+                    obj.direction = directionToChar(element.direction);
                     obj.d = moment().format('D/MM/YYYY HH:mm:ss AA');//element.dateString;
                     cgmData.push(obj);
                 }

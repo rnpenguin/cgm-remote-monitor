@@ -15,7 +15,7 @@
     body {
         fill: #fff;
         background: #000;
-        color: #808080;
+        color: red;
     }
 
     .axis path,
@@ -35,6 +35,18 @@
         overflow: hidden;
         height: auto;
         display: block;
+    }
+
+    .container .current {
+        color: green;
+    }
+
+    .container .current.high {
+        color: yellow;
+    }
+
+    .container .current.low {
+        color: red;
     }
 
     .open-right, .open-left {
@@ -72,27 +84,31 @@
 
     [class*='span']{float:left;min-height:1px;}
 
-    .span1{width: 20%; float: left; padding-top: 3%; line-height: 50%;}
+    .span1{width: 30%; float: left; padding-top: 3%; line-height: 50%;}
 
-    .span2{width: 40%; margin-left: 35%}
+    .span2{width: 40%; margin-left: 30%}
 
 </style>
 <body>
 <html>
 <div class='container'>
     <div class='row-fluid heading'>
-        <div class='span1' style='font-size: 400%'>
-            <span id='currentTime'>???</span><br>
-            <span style='font-size: 35%'><span id='watchers'>0</span> watcher(s)</span>
+        <div class='span1' style='font-size: 600%'>
+            <div id='currentTime'>---</div>
+            <div style='font-size: 25%; line-height: 300%'>
+                <span id='lastEntry'>---</span>
+                &bull;
+                <span id='watchers'>0</span> watcher(s)
+            </div>
         </div>
-        <div class='span2' style='font-size: 800%'>
+        <div class='span2 current' style='font-size: 800%'>
             <div id='noButton'>
-                <span id='currentBG'>???</span>
-                <span style='font-size: 20%'>mg/dL</span>
+                <span class='currentBG'>---</span>
+                <span class="currentDirection">-</span>
             </div>
             <div class='bgButton' id='bgButton' hidden='true' onclick='stopAlarm(true)'>
-                <span id='bgValue'>???</span>
-                <span style='font-size: 20%'>mg/dL</span>
+                <span class='currentBG'>---</span>
+                <span class="currentDirection">-</span>
             </div>
         </div>
     </div>
@@ -107,7 +123,7 @@
 <script>
     var treatments;
     var padding = { top: 20, right: 10, bottom: 60, left: 10};
-    var opacity = {current: 1, DAY: 1, NIGHT: 0.5};
+    var opacity = {current: 1, DAY: 1, NIGHT: 0.8};
     var now = Date.now();
     var data = [];
     var dateFn = function (d) { return new Date(d.date) };
@@ -651,7 +667,7 @@
     socket.on('now', function (d) {
         now = d;
         var dateTime = new Date(now);
-        $('#currentTime').text(d3.time.format('%I:%M%p')(dateTime));
+        $('#currentTime').text(d3.time.format('%I:%M')(dateTime));
 
         // Dim the screen by reducing the opacity when at nighttime
         if (opacity.current != opacity.NIGHT && (dateTime.getHours() > 21 || dateTime.getHours() < 7 )) {
@@ -665,8 +681,11 @@
         if (d.length > 1) {
             // change the next line so that it uses the prediction if the signal gets lost (max 1/2 hr)
             if (d[0].length) {
-                $('#currentBG').text(d[0][d[0].length - 1].y);
-                $('#bgValue').text(d[0][d[0].length - 1].y);
+                var current = d[0][d[0].length - 1];
+                $('#lastEntry').text(timeAgo((Date.now() - new Date(current.x).getTime()) / 1000));
+                $('.container .currentBG').text(current.y);
+                $('.container .currentDirection').html(current.direction);
+                $('.container .current').toggleClass('high', current.y > 180).toggleClass('low', current.y < 70)
             }
             data = d[0].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'grey'} });
             data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
@@ -721,7 +740,7 @@
         element.hidden = '';
         var element1 = document.getElementById('noButton');
         element1.hidden = 'true';
-        $('#bgValue').text($('#currentBG').text());
+        $('.container .currentBG').text();
     }
 
     function stopAlarm(isClient) {
@@ -738,6 +757,29 @@
             socket.emit('ack', Date.now());
         }
     }
+
+    function timeAgo(offset) {
+        var
+            span = [],
+            MINUTE = 60,
+            HOUR = 3600,
+            DAY = 86400,
+            WEEK = 604800;
+
+        if (offset <= MINUTE)              span = [ 'now', '' ];
+        else if (offset < (MINUTE * 60))   span = [ Math.round(Math.abs(offset / MINUTE)), 'min' ];
+        else if (offset < (HOUR * 24))     span = [ Math.round(Math.abs(offset / HOUR)), 'hr' ];
+        else if (offset < (DAY * 7))       span = [ Math.round(Math.abs(offset / DAY)), 'day' ];
+        else if (offset < (WEEK * 52))     span = [ Math.round(Math.abs(offset / WEEK)), 'week' ];
+        else                               span = [ 'a long time', '' ];
+
+        if (span[1])
+            return span.join(' ')  + ' ago';
+        else
+            return span[0];
+
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
