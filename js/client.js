@@ -552,7 +552,7 @@
     socket.on('now', function (d) {
         now = d;
         var dateTime = new Date(now);
-        $('#currentTime').text(d3.time.format('%I:%M')(dateTime));
+        $('#currentTime').text(moment(dateTime).format('h:mm'));
 
         // Dim the screen by reducing the opacity when at nighttime
         if (opacity.current != opacity.NIGHT && (dateTime.getHours() > 21 || dateTime.getHours() < 7 )) {
