@@ -136,3 +136,13 @@ body {
   background: #ababab;
   margin: 10px auto;
 }
+
+#lastEntry.current {
+  color: green;
+}
+
+#testAlarms {
+  font-size: 20%;
+  color: red;
+  text-decoration: none;
+}

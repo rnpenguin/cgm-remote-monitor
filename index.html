@@ -12,14 +12,12 @@
                     <div id='currentTime'>---</div>
                     <div style='font-size: 25%; line-height: 300%'>
                         <span id='lastEntry'>---</span>
-                        &bull;
-                        <span id='watchers'>0</span> watcher(s)
                     </div>
                 </div>
                 <div class='span2 current' style='font-size: 900%'>
                     <div id='noButton'>
                         <span class='currentBG'>---</span>
-                        <span class="currentDirection">-</span>
+                        <span class="currentDirection">-</span><a id="testAlarms" href="#">&#10003;&#9834;</a>
                     </div>
                     <div class='bgButton' id='bgButton' hidden='true'>
                         <span class='currentBG'>---</span>
@@ -31,8 +29,8 @@
                 <div id='chartContainer'></div>
             </div>
         </div>
-        <audio id='audio' loop><source src='audio/alarm.ogg' type='audio/ogg'/></audio>
-        <audio id='audio2' loop><source src='audio/alarm2.ogg' type='audio/ogg'/></audio>
+        <audio id='audio' loop src='audio/alarm.ogg' type='audio/ogg'></audio>
+        <audio id='audio2' loop src='audio/alarm2.ogg' type='audio/ogg'></audio>
         <script src='/socket.io/socket.io.js'></script>
         <script src='/bower_components/d3/d3.min.js'></script>
         <script src='/bower_components/jquery/dist/jquery.min.js'></script>
