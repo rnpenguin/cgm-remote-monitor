@@ -98,9 +98,9 @@
     // get the desired opacity for context chart based on the brush extent
     function highlightBrushPoints(data) {
         if (data.date.getTime() >= brush.extent()[0].getTime() && data.date.getTime() <= brush.extent()[1].getTime()) {
-            return 1
+            return 1;
         } else {
-            return 0.2
+            return 0.4;
         }
     }
 
@@ -573,9 +573,23 @@
                 $('.container .currentDirection').html(current.direction);
                 $('.container .current').toggleClass('high', current.y > 180).toggleClass('low', current.y < 70)
             }
-            data = d[0].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'grey'} });
-            data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
-            data = data.concat(d[2].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'red'} }));
+            data = d[0].map(function (obj) {
+                var color = '';
+                switch (true) {
+                    case (obj.y > 180):
+                        color = 'yellow';
+                        break;
+                    case (obj.y >=70 && obj.y <= 180):
+                        color = 'green';
+                        break;
+                    case (obj.y < 70):
+                        color = 'red';
+                        break;
+                }
+                return { date: new Date(obj.x), sgv: obj.y, color: color}
+            });
+//            data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
+//            data = data.concat(d[2].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'red'} }));
             treatments = d[3];
             if (!isInitialData) {
                 isInitialData = true;
