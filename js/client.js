@@ -588,8 +588,8 @@
                 }
                 return { date: new Date(obj.x), sgv: obj.y, color: color}
             });
-//            data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
-//            data = data.concat(d[2].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'red'} }));
+            data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
+            data = data.concat(d[2].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'red'} }));
             treatments = d[3];
             if (!isInitialData) {
                 isInitialData = true;

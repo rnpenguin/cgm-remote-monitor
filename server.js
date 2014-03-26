@@ -144,7 +144,7 @@ function update() {
                 if (element) {
                     var obj = {};
                     obj.y = element.bg;
-                    obj.x = element.timestamp;
+                    obj.x = element.timestamp.getTime();
                     obj.direction = directionToChar(element.direction);
                     obj.d = moment().format('D/MM/YYYY HH:mm:ss AA');//element.dateString;
                     cgmData.push(obj);
