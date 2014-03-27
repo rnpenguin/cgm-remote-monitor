@@ -567,13 +567,29 @@
             // change the next line so that it uses the prediction if the signal gets lost (max 1/2 hr)
             if (d[0].length) {
                 var current = d[0][d[0].length - 1];
+                var currentBG = current.y;
+
+                switch (current.y) {
+                    case 0:  currentBG = '??0'; break; //None
+                    case 1:  currentBG = '?SN'; break; //SENSOR_NOT_ACTIVE
+                    case 2:  currentBG = '??2'; break; //MINIMAL_DEVIATION
+                    case 3:  currentBG = '?NA'; break; //NO_ANTENNA
+                    case 5:  currentBG = '?NC'; break; //SENSOR_NOT_CALIBRATED
+                    case 6:  currentBG = '?CD'; break; //COUNTS_DEVIATION
+                    case 7:  currentBG = '??7'; break; //?
+                    case 8:  currentBG = '??8'; break; //?
+                    case 9:  currentBG = '?AD'; break; //ABSOLUTE_DEVIATION
+                    case 10: currentBG = '?PD'; break; //POWER_DEVIATION
+                    case 12: currentBG = '?RF'; break; //BAD_RF
+                }
+
                 var secsSinceLast = (Date.now() - new Date(current.x).getTime()) / 1000;
                 $('#lastEntry').text(timeAgo(secsSinceLast)).toggleClass('current', secsSinceLast < 10 * 60);
-                $('.container .currentBG').text(current.y);
+                $('.container .currentBG').text(currentBG);
                 $('.container .currentDirection').html(current.direction);
                 $('.container .current').toggleClass('high', current.y > 180).toggleClass('low', current.y < 70)
             }
-            data = d[0].map(function (obj) {
+            data = d[0].filter(function(obj) { return obj.y > 10; }).map(function (obj) {
                 var color = '';
                 switch (true) {
                     case (obj.y > 180):
