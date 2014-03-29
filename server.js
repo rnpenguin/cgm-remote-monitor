@@ -125,28 +125,13 @@ function update() {
         var collection = db.collection(DB_COLLECTION);
 
         collection.find({"timestamp": {"$gte": earliest_data}}).toArray(function(err, results) {
-
-            //currently adding too much data from android, I we need to dedupe to make the graph look ok
-            var prevBG = 0,
-                prevTime = 0;
-
-            var filtered = _.filter(results, function(entry) {
-                if (prevBG === entry.bg && prevTime > 0 && (entry.timestamp - prevTime) < 5 * 60000) {
-                    return false;
-                } else {
-                    prevBG = entry.bg;
-                    prevTime = entry.timestamp;
-                    return true;
-                }
-            });
-
-            filtered.forEach(function(element, index, array) {
+            results.forEach(function(element, index, array) {
                 if (element) {
                     var obj = {};
                     obj.y = element.bg;
                     obj.x = element.timestamp.getTime();
                     obj.direction = directionToChar(element.direction);
-                    obj.d = moment().format('D/MM/YYYY HH:mm:ss AA');//element.dateString;
+                    obj.d = moment(element.timestamp).format('D/MM/YYYY HH:mm:ss AA');
                     cgmData.push(obj);
                 }
             });
@@ -174,26 +159,30 @@ function loadData() {
         
     }
 
-    var actualLength = actual.length - 1;
+    var filteredActual = actual.filter(function(d) {
+        return d.x > 10;
+    });
 
-    if (actualLength > 1) {
+    var filteredActualLength = filteredActual.length - 1;
+
+    if (filteredActualLength > 1) {
         // predict using AR model
         var predicted = [];
-        var lastValidReadingTime = actual[actualLength].x;
-        var elapsedMins = (actual[actualLength].x - actual[actualLength - 1].x) / ONE_MINUTE;
+        var lastValidReadingTime = filteredActual[filteredActualLength].x;
+        var elapsedMins = (filteredActual[filteredActualLength].x - filteredActual[filteredActualLength - 1].x) / ONE_MINUTE;
         var BG_REF = 140;
         var BG_MIN = 36;
         var BG_MAX = 400;
-        var y = Math.log(actual[actualLength].y / BG_REF);
+        var y = Math.log(filteredActual[filteredActualLength].y / BG_REF);
         if (elapsedMins < 5.1) {
-            y = [Math.log(actual[actualLength - 1].y / BG_REF), y];
+            y = [Math.log(filteredActual[filteredActualLength - 1].y / BG_REF), y];
         } else {
             y = [y, y];
         }
         var n = Math.ceil(12 * (1 / 2 + (now - lastValidReadingTime) / ONE_HOUR));
         var AR = [-0.723, 1.716];
-        var dt = actual[actualLength].x;
-        for (i = 0; i <= n; i++) {
+        var dt = filteredActual[filteredActualLength].x;
+        for (var i = 0; i <= n; i++) {
             y = [y[1], AR[0] * y[0] + AR[1] * y[1]];
             dt = dt + FIVE_MINUTES;
             predicted[i] = {
