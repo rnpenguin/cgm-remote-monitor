@@ -19,7 +19,10 @@
         brushTimer,
         brushInProgress = false,
         clip,
-        FOCUS_DATA_RANGE_MS = 12600000;  // 3.5 hours of actual data
+        FOCUS_DATA_RANGE_MS = 12600000, // 3.5 hours of actual data
+        audio = document.getElementById('audio'),
+        alarmInProgress = false;
+
 
     // create svg and g to contain the chart contents
     var charts = d3.select('#chartContainer').append('svg')
@@ -625,10 +628,10 @@
         console.log('Client connected to server.')
     });
     socket.on('alarm', function() {
-        generateAlarm(alarmSound);
+        generateAlarm('alarm.mp3');
     });
     socket.on('urgent_alarm', function() {
-        generateAlarm(urgentAlarmSound);
+        generateAlarm('alarm2.mp3');
     });
     socket.on('clear_alarm', function() {
         if (alarmInProgress) {
@@ -643,30 +646,19 @@
 
     $('#testAlarms').click(function(event) {
         event.preventDefault();
-        testAlarm(alarmSound);
-        testAlarm(urgentAlarmSound);
+        audio.src = 'audio/alarm.mp3';
+        audio.load();
+        audio.play();
+        setTimeout(function() {
+            audio.pause();
+        }, 4000);
     });
 
-    function testAlarm(alarmType) {
-        alarmType.load();
-        alarmType.play();
-        setTimeout(function() {
-            alarmType.pause();
-        }, 4000);
-    }
-
-
-    // load alarms
-    var alarmSound = document.getElementById('audio');
-    var urgentAlarmSound = document.getElementById('audio2');
-
-    // alarm state
-    var alarmInProgress = false;
-
-    function generateAlarm(alarmType) {
+    function generateAlarm(file) {
         alarmInProgress = true;
-        alarmType.load();
-        alarmType.play();
+        audio.src = 'audio/' + file;
+        audio.load();
+        audio.play();
         var element = document.getElementById('bgButton');
         element.hidden = '';
         var element1 = document.getElementById('noButton');
@@ -680,8 +672,7 @@
         element.hidden = 'true';
         element = document.getElementById('noButton');
         element.hidden = '';
-        alarmSound.pause();
-        urgentAlarmSound.pause();
+        audio.pause();
 
         // only emit ack if client invoke by button press
         if (isClient) {
