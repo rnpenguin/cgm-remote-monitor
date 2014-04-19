@@ -21,7 +21,9 @@
         clip,
         FOCUS_DATA_RANGE_MS = 12600000, // 3.5 hours of actual data
         audio = document.getElementById('audio'),
-        alarmInProgress = false;
+        alarmInProgress = false,
+        currentAlarmType = null;
+
 
 
     // create svg and g to contain the chart contents
@@ -541,9 +543,16 @@
         }, 100);
     };
 
-    $('#bgButton').click(function() {
-        stopAlarm(true)
+    var silenceDropdown = new Dropdown(".dropdown-menu");
+
+    $('#bgButton').click(function(e) {
+        silenceDropdown.open(e);
     });
+
+    $("#silenceBtn").find("a").click(function() {
+        stopAlarm(true, $(this).data("snooze-time"));
+    });
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -628,9 +637,13 @@
         console.log('Client connected to server.')
     });
     socket.on('alarm', function() {
+        console.log("Alarm raised!");
+        currentAlarmType = 'alarm';
         generateAlarm('alarm.mp3');
     });
     socket.on('urgent_alarm', function() {
+        console.log("Urgent alarm raised!");
+        currentAlarmType = 'urgent_alarm';
         generateAlarm('alarm2.mp3');
     });
     socket.on('clear_alarm', function() {
@@ -666,7 +679,7 @@
         $('.container .currentBG').text();
     }
 
-    function stopAlarm(isClient) {
+    function stopAlarm(isClient, silenceTime) {
         alarmInProgress = false;
         var element = document.getElementById('bgButton');
         element.hidden = 'true';
@@ -676,7 +689,7 @@
 
         // only emit ack if client invoke by button press
         if (isClient) {
-            socket.emit('ack', Date.now());
+            socket.emit('ack', currentAlarmType, silenceTime);
         }
     }
 

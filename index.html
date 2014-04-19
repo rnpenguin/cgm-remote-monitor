@@ -4,6 +4,7 @@
         <meta name='viewport' content='width=device-width, initial-scale=1.0'>
         <title>NightScout</title>
         <link rel='stylesheet' type='text/css' href='css/main.css'>
+        <link rel='stylesheet' type='text/css' href='css/dropdown.css'>
     </head>
     <body>
         <div class='container'>
@@ -23,6 +24,13 @@
                         <span class='currentBG'>---</span>
                         <span class="currentDirection">-</span>
                     </div>
+                    <ul class="dropdown-menu" id="silenceBtn">
+                        <li><a href="#" data-snooze-time="1200000">Silence for 20 minutes</a></li>
+                        <li><a href="#" data-snooze-time="1800000">Silence for 30 minutes</a></li>
+                        <li><a href="#" data-snooze-time="2400000">Silence for 40 minutes</a></li>
+                        <li><a href="#" data-snooze-time="3000000">Silence for 50 minutes</a></li>
+                        <li><a href="#" data-snooze-time="3600000">Silence for 60 minutes</a></li>
+                    </ul>
                 </div>
             </div>
             <div class='row-fluid section1'>
@@ -33,6 +41,7 @@
         <script src='/socket.io/socket.io.js'></script>
         <script src='/bower_components/d3/d3.min.js'></script>
         <script src='/bower_components/jquery/dist/jquery.min.js'></script>
+        <script src='js/dropdown.js'></script>
         <script src='/bower_components/moment/moment.js'></script>
         <script src='/bower_components/lodash/dist/lodash.min.js'></script>
         <script src='/js/client.js'></script>

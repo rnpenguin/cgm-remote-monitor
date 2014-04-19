@@ -70,8 +70,9 @@ io.sockets.on('connection', function (socket) {
     io.sockets.emit("now", now);
     io.sockets.emit("sgv", patientData);
     io.sockets.emit("clients", ++watchers);
-    socket.on('ack', function(time) {
-        lastAckTime = new Date().getTime();
+    socket.on('ack', function(alarmType, _silenceTime) {
+        alarms[alarmType].lastAckTime = new Date().getTime();
+        alarms[alarmType].silenceTime = _silenceTime ? _silenceTime : FORTY_MINUTES;
         io.sockets.emit("clear_alarm", true);
         console.log("alarm cleared");
     });
@@ -84,7 +85,6 @@ io.sockets.on('connection', function (socket) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // data handling functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-var lastAckTime = 0;
 var TZ_OFFSET_PATIENT = 8;
 var TZ_OFFSET_SERVER = new Date().getTimezoneOffset() / 60;
 var ONE_HOUR = 3600000;
@@ -111,8 +111,21 @@ var dir2Char = {
 
 function directionToChar(direction) {
     return dir2Char[direction] || '-';
+}
+
+
+var Alarm = function(_typeName, _threshold) {
+    this.typeName = _typeName;
+    this.silenceTime = FORTY_MINUTES;
+    this.lastAckTime = 0;
+    this.threshold = _threshold;
 };
 
+// list of alarms with their thresholds
+var alarms = {
+    "alarm" : new Alarm("Regular", 0.05),
+    "urgent_alarm": new Alarm("Urgent", 0.10)
+};
 
 function update() {
 
@@ -145,6 +158,15 @@ function update() {
     return update;
 }
 
+function emitAlarm(alarmType) {
+    var alarm = alarms[alarmType];
+    if (now > alarm.lastAckTime + alarm.silenceTime) {
+        io.sockets.emit(alarmType);
+    } else {
+        console.log(alarm.typeName + " alarm is silenced for " + Math.floor((alarm.silenceTime - (now - alarm.lastAckTime)) / 60000) + " minutes more");
+    }
+}
+
 function loadData() {
 
     var treatment = [];
@@ -160,7 +182,7 @@ function loadData() {
     }
 
     var filteredActual = actual.filter(function(d) {
-        return d.x > 10;
+        return d.y > 10;
     });
 
     var filteredActualLength = filteredActual.length - 1;
@@ -200,15 +222,14 @@ function loadData() {
 
         // compute current loss
         var avgLoss = 0;
-        if (now > lastAckTime + FORTY_MINUTES) {
-            for (i = 0; i <= 6; i++) {
-                avgLoss += 1 / 6 * Math.pow(log10(predicted[i].y / 120), 2);
-            }
-            if (avgLoss > 0.10) {
-                io.sockets.emit('urgent_alarm');
-            } else if (avgLoss > 0.05) {
-                io.sockets.emit('alarm');
-            }
+        for (var i = 0; i <= 6; i++) {
+            avgLoss += 1 / 6 * Math.pow(log10(predicted[i].y / 120), 2);
+        }
+
+        if (avgLoss > alarms['urgent_alarm'].threshold) {
+            emitAlarm('urgent_alarm');
+        } else if (avgLoss > alarms['alarm'].threshold) {
+            emitAlarm('alarm');
         }
     }
 }

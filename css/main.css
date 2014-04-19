@@ -146,3 +146,7 @@ body {
   color: red;
   text-decoration: none;
 }
+
+#silenceBtn, #silenceBtn * {
+    font-size: 60%;
+}
