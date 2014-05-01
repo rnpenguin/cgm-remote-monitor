@@ -1,4 +1,4 @@
 {
-  "url": "mongodb://localhost/project-glu-dev",
+  "url": "mongodb://localhost/project-glu",
   "collection": "entries"
 }
