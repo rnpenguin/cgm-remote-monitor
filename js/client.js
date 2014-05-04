@@ -1,9 +1,9 @@
 (function() {
-    "use strict";
+    'use strict';
 
     var treatments,
-        padding = { top: 20, right: 10, bottom: 30, left: 10},
-        opacity = {current: 1, DAY: 1, NIGHT: 0.5},
+        padding = { top: 20, right: 10, bottom: 80, left: 10},
+        opacity = {current: 1, DAY: 1, NIGHT: 0.8},
         now = Date.now(),
         data = [],
         dateFn = function (d) { return new Date(d.date)},
@@ -19,7 +19,12 @@
         brushTimer,
         brushInProgress = false,
         clip,
-        FOCUS_DATA_RANGE_MS = 12600000;  // 3.5 hours of actual data
+        FOCUS_DATA_RANGE_MS = 12600000, // 3.5 hours of actual data
+        audio = document.getElementById('audio'),
+        alarmInProgress = false,
+        currentAlarmType = null;
+
+
 
     // create svg and g to contain the chart contents
     var charts = d3.select('#chartContainer').append('svg')
@@ -98,9 +103,9 @@
     // get the desired opacity for context chart based on the brush extent
     function highlightBrushPoints(data) {
         if (data.date.getTime() >= brush.extent()[0].getTime() && data.date.getTime() <= brush.extent()[1].getTime()) {
-            return 1
+            return 1;
         } else {
-            return 0.2
+            return 0.4;
         }
     }
 
@@ -125,7 +130,7 @@
         // update the opacity of the context data points to brush extent
         context.selectAll('circle')
             .data(data)
-            .style('opacity', function(d) {return 1;} );
+            .style('opacity', function() {return 1;} );
     }
 
     function brushEnded() {
@@ -324,9 +329,9 @@
                 focus.append('line')
                     .attr('class', 'low-line')
                     .attr('x1', xScale(dataRange[0]))
-                    .attr('y1', yScale(80))
+                    .attr('y1', yScale(70))
                     .attr('x2', xScale(dataRange[1]))
-                    .attr('y2', yScale(80))
+                    .attr('y2', yScale(70))
                     .style('stroke-dasharray', ('3, 3'))
                     .attr('stroke', 'grey');
 
@@ -370,9 +375,9 @@
                 context.append('line')
                     .attr('class', 'low-line')
                     .attr('x1', xScale(dataRange[0]))
-                    .attr('y1', yScale2(80))
+                    .attr('y1', yScale2(70))
                     .attr('x2', xScale(dataRange[1]))
-                    .attr('y2', yScale2(80))
+                    .attr('y2', yScale2(70))
                     .style('stroke-dasharray', ('3, 3'))
                     .attr('stroke', 'grey');
 
@@ -559,7 +564,7 @@
     socket.on('now', function (d) {
         now = d;
         var dateTime = new Date(now);
-        $('#currentTime').text(d3.time.format('%I:%M%p')(dateTime));
+        $('#currentTime').text(moment(dateTime).format('h:mm'));
 
         // Dim the screen by reducing the opacity when at nighttime
         if (opacity.current != opacity.NIGHT && (dateTime.getHours() > 21 || dateTime.getHours() < 7 )) {
@@ -573,10 +578,44 @@
         if (d.length > 1) {
             // change the next line so that it uses the prediction if the signal gets lost (max 1/2 hr)
             if (d[0].length) {
-                $('#currentBG').text(d[0][d[0].length - 1].y);
-                $('#bgValue').text(d[0][d[0].length - 1].y);
+                var current = d[0][d[0].length - 1];
+                var currentBG = current.y;
+
+                switch (current.y) {
+                    case 0:  currentBG = '??0'; break; //None
+                    case 1:  currentBG = '?SN'; break; //SENSOR_NOT_ACTIVE
+                    case 2:  currentBG = '??2'; break; //MINIMAL_DEVIATION
+                    case 3:  currentBG = '?NA'; break; //NO_ANTENNA
+                    case 5:  currentBG = '?NC'; break; //SENSOR_NOT_CALIBRATED
+                    case 6:  currentBG = '?CD'; break; //COUNTS_DEVIATION
+                    case 7:  currentBG = '??7'; break; //?
+                    case 8:  currentBG = '??8'; break; //?
+                    case 9:  currentBG = '?AD'; break; //ABSOLUTE_DEVIATION
+                    case 10: currentBG = '?PD'; break; //POWER_DEVIATION
+                    case 12: currentBG = '?RF'; break; //BAD_RF
+                }
+
+                var secsSinceLast = (Date.now() - new Date(current.x).getTime()) / 1000;
+                $('#lastEntry').text(timeAgo(secsSinceLast)).toggleClass('current', secsSinceLast < 10 * 60);
+                $('.container .currentBG').text(currentBG);
+                $('.container .currentDirection').html(current.direction);
+                $('.container .current').toggleClass('high', current.y > 180).toggleClass('low', current.y < 70)
             }
-            data = d[0].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'grey'} });
+            data = d[0].filter(function(obj) { return obj.y > 10; }).map(function (obj) {
+                var color = '';
+                switch (true) {
+                    case (obj.y > 180):
+                        color = 'yellow';
+                        break;
+                    case (obj.y >=70 && obj.y <= 180):
+                        color = 'green';
+                        break;
+                    case (obj.y < 70):
+                        color = 'red';
+                        break;
+                }
+                return { date: new Date(obj.x), sgv: obj.y, color: color}
+            });
             data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
             data = data.concat(d[2].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'red'} }));
             treatments = d[3];
@@ -600,12 +639,12 @@
     socket.on('alarm', function() {
         console.log("Alarm raised!");
         currentAlarmType = 'alarm';
-        generateAlarm(alarmSound);
+        generateAlarm('alarm.mp3');
     });
     socket.on('urgent_alarm', function() {
         console.log("Urgent alarm raised!");
         currentAlarmType = 'urgent_alarm';
-        generateAlarm(urgentAlarmSound);
+        generateAlarm('alarm2.mp3');
     });
     socket.on('clear_alarm', function() {
         if (alarmInProgress) {
@@ -618,23 +657,26 @@
         $('#watchers').text(watchers);
     });
 
-    // load alarms
-    var alarmSound = document.getElementById('audio');
-    var urgentAlarmSound = document.getElementById('audio2');
+    $('#testAlarms').click(function(event) {
+        event.preventDefault();
+        audio.src = 'audio/alarm.mp3';
+        audio.load();
+        audio.play();
+        setTimeout(function() {
+            audio.pause();
+        }, 4000);
+    });
 
-    // alarm state
-    var alarmInProgress = false;
-    var currentAlarmType = null;
-
-    function generateAlarm(alarmType) {
+    function generateAlarm(file) {
         alarmInProgress = true;
-        alarmType.load();
-        alarmType.play();
+        audio.src = 'audio/' + file;
+        audio.load();
+        audio.play();
         var element = document.getElementById('bgButton');
         element.hidden = '';
         var element1 = document.getElementById('noButton');
         element1.hidden = 'true';
-        $('#bgValue').text($('#currentBG').text());
+        $('.container .currentBG').text();
     }
 
     function stopAlarm(isClient, silenceTime) {
@@ -643,14 +685,36 @@
         element.hidden = 'true';
         element = document.getElementById('noButton');
         element.hidden = '';
-        alarmSound.pause();
-        urgentAlarmSound.pause();
+        audio.pause();
 
         // only emit ack if client invoke by button press
         if (isClient) {
             socket.emit('ack', currentAlarmType, silenceTime);
         }
     }
+
+    function timeAgo(offset) {
+        var
+            span = [],
+            MINUTE = 60,
+            HOUR = 3600,
+            DAY = 86400,
+            WEEK = 604800;
+
+        if (offset <= MINUTE)              span = [ 'now', '' ];
+        else if (offset < (MINUTE * 60))   span = [ Math.round(Math.abs(offset / MINUTE)), 'min' ];
+        else if (offset < (HOUR * 24))     span = [ Math.round(Math.abs(offset / HOUR)), 'hr' ];
+        else if (offset < (DAY * 7))       span = [ Math.round(Math.abs(offset / DAY)), 'day' ];
+        else if (offset < (WEEK * 52))     span = [ Math.round(Math.abs(offset / WEEK)), 'week' ];
+        else                               span = [ 'a long time', '' ];
+
+        if (span[1])
+            return span.join(' ')  + ' ago';
+        else
+            return span[0];
+
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

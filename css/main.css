@@ -1,5 +1,5 @@
-@import url("//fonts.googleapis.com/css?family=Ubuntu:300,400,500,700,300italic,400italic,500italic,700italic");
-@import url("//fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,300,400,600,700,800");
+@import url("http://fonts.googleapis.com/css?family=Ubuntu:300,400,500,700,300italic,400italic,500italic,700italic");
+@import url("http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,300,400,600,700,800");
 
 /* Large desktop */
 @media (min-width: 980px) {
@@ -19,11 +19,12 @@ html {
 }
 
 body {
-  font-family: 'Open Sans', Helvetica, Arial, sans-serif;
   fill: #fff;
   background: #000;
-  color: #808080;
+  color: red;
+  font-family: 'Open Sans', Helvetica, Arial, sans-serif;
 }
+
 .heading, .subheading {
   font-family: 'Ubuntu', Helvetica, Arial, sans-serif;
   text-align: center;
@@ -42,10 +43,27 @@ body {
   height: 100%;
 }
 
+#chartContainer svg {
+  width: 100%;
+  height: 100%;
+}
+
 .container {
   overflow: hidden;
   height: auto;
   display: block;
+}
+
+.container .current {
+  color: green;
+}
+
+.container .current.high {
+  color: yellow;
+}
+
+.container .current.low {
+  color: red;
 }
 
 .open-right, .open-left {
@@ -83,9 +101,9 @@ body {
 
 [class*='span']{float:left;min-height:1px;}
 
-.span1{width: 20%; float: left; padding-top: 3%; line-height: 50%;}
+.span1{float: left; padding-top: 3%; line-height: 50%;}
 
-.span2{width: 40%; margin-left: 35%}
+.span2{float: right}
 
 .bgButton {
   background: #ff2035;
@@ -124,6 +142,16 @@ body {
   margin: 10px auto;
 }
 
-#silenceBtn {
-    font-size: 200%;
+#lastEntry.current {
+  color: green;
+}
+
+#testAlarms {
+  font-size: 20%;
+  color: red;
+  text-decoration: none;
+}
+
+#silenceBtn, #silenceBtn * {
+    font-size: 60%;
 }

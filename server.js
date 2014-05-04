@@ -14,13 +14,17 @@
 // Description: Basic web server to display data from Dexcom G4.  Requires a database that contains
 // the Dexcom SGV data.
 
+var fs = require('fs'),
+    mongoClient = require('mongodb').MongoClient,
+    moment = require('moment'),
+    nodeStatic = require('node-static'),
+    _ = require("lodash");
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // local variables
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var patientData = [];
 var now = new Date().getTime();
-var fs = require('fs');
-var mongoClient = require('mongodb').MongoClient;
 var cgmData = [];
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -29,7 +33,6 @@ var cgmData = [];
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var PORT = process.env.PORT || 1337;
 var server = require('http').createServer(function serverCreator(request, response) {
-    var nodeStatic = require('node-static');
     var staticServer = new nodeStatic.Server(".");
     var sys = require("sys");
     // Grab the URL requested by the client and parse any query options
@@ -93,6 +96,24 @@ var DB = require('./database_configuration.json');
 var DB_URL = DB.url;
 var DB_COLLECTION = DB.collection;
 
+var dir2Char = {
+    'NONE': '&#8700;',
+    'DoubleUp': '&#8648;',
+    'SingleUp': '&#8593;',
+    'FortyFiveUp': '&#8599;',
+    'Flat': '&#8594;',
+    'FortyFiveDown': '&#8600;',
+    'SingleDown': '&#8595;',
+    'DoubleDown': '&#8650;',
+    'NOT COMPUTABLE': '-',
+    'RATE OUT OF RANGE': '&#8622;'
+};
+
+function directionToChar(direction) {
+    return dir2Char[direction] || '-';
+}
+
+
 var Alarm = function(_typeName, _threshold) {
     this.typeName = _typeName;
     this.silenceTime = FORTY_MINUTES;
@@ -111,18 +132,19 @@ function update() {
     now = Date.now();
 
     cgmData = [];
-    var earliest_data = now - TWO_DAYS;
+    var earliest_data = new Date(now - TWO_DAYS);
     mongoClient.connect(DB_URL, function (err, db) {
         if (err) throw err;
         var collection = db.collection(DB_COLLECTION);
 
-        collection.find({"date": {"$gte": earliest_data}}).toArray(function(err, results) {
+        collection.find({"timestamp": {"$gte": earliest_data}}).toArray(function(err, results) {
             results.forEach(function(element, index, array) {
                 if (element) {
                     var obj = {};
-                    obj.y = element.sgv;
-                    obj.x = element.date;
-                    obj.d = element.dateString;
+                    obj.y = element.bg;
+                    obj.x = element.timestamp.getTime();
+                    obj.direction = directionToChar(element.direction);
+                    obj.d = moment(element.timestamp).format('D/MM/YYYY HH:mm:ss AA');
                     cgmData.push(obj);
                 }
             });
@@ -157,33 +179,32 @@ function loadData() {
             return a.x - b.x;
         });
         
-        // sgv less than or equal to 10 means error code
-        // or warm up period code, so ignore
-        actual = actual.filter(function (a) {
-            return a.y > 10;
-        })
     }
 
-    var actualLength = actual.length - 1;
+    var filteredActual = actual.filter(function(d) {
+        return d.y > 10;
+    });
 
-    if (actualLength > 1) {
+    var filteredActualLength = filteredActual.length - 1;
+
+    if (filteredActualLength > 1) {
         // predict using AR model
         var predicted = [];
-        var lastValidReadingTime = actual[actualLength].x;
-        var elapsedMins = (actual[actualLength].x - actual[actualLength - 1].x) / ONE_MINUTE;
+        var lastValidReadingTime = filteredActual[filteredActualLength].x;
+        var elapsedMins = (filteredActual[filteredActualLength].x - filteredActual[filteredActualLength - 1].x) / ONE_MINUTE;
         var BG_REF = 140;
         var BG_MIN = 36;
         var BG_MAX = 400;
-        var y = Math.log(actual[actualLength].y / BG_REF);
+        var y = Math.log(filteredActual[filteredActualLength].y / BG_REF);
         if (elapsedMins < 5.1) {
-            y = [Math.log(actual[actualLength - 1].y / BG_REF), y];
+            y = [Math.log(filteredActual[filteredActualLength - 1].y / BG_REF), y];
         } else {
             y = [y, y];
         }
         var n = Math.ceil(12 * (1 / 2 + (now - lastValidReadingTime) / ONE_HOUR));
         var AR = [-0.723, 1.716];
-        var dt = actual[actualLength].x;
-        for (i = 0; i <= n; i++) {
+        var dt = filteredActual[filteredActualLength].x;
+        for (var i = 0; i <= n; i++) {
             y = [y[1], AR[0] * y[0] + AR[1] * y[1]];
             dt = dt + FIVE_MINUTES;
             predicted[i] = {
