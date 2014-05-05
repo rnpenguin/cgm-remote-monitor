@@ -18,7 +18,8 @@ var fs = require('fs'),
     mongoClient = require('mongodb').MongoClient,
     moment = require('moment'),
     nodeStatic = require('node-static'),
-    _ = require("lodash");
+    _ = require("lodash"),
+    pebble = require('./lib/pebble');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // local variables
@@ -37,6 +38,12 @@ var server = require('http').createServer(function serverCreator(request, respon
     var sys = require("sys");
     // Grab the URL requested by the client and parse any query options
     var url = require('url').parse(request.url, true);
+    
+    if (url.path.indexOf('/pebble') === 0) {
+      request.with_collection = with_collection;
+      pebble.pebble(request, response);
+      return;
+    }
 
     // Serve file using node-static
     staticServer.serve(request, response, function clientHandler(err) {
@@ -93,6 +100,8 @@ var FIVE_MINUTES = 300000;
 var FORTY_MINUTES = 2400000;
 var TWO_DAYS = 172800000;
 var DB = require('./database_configuration.json');
+DB.url = DB.url || process.env.CUSTOMCONNSTR_mongo;
+DB.collection = DB.collection || process.env.CUSTOMCONNSTR_mongo_collection;
 var DB_URL = DB.url;
 var DB_COLLECTION = DB.collection;
 
@@ -126,6 +135,14 @@ var alarms = {
     "alarm" : new Alarm("Regular", 0.05),
     "urgent_alarm": new Alarm("Urgent", 0.10)
 };
+
+function with_collection (fn) {
+  mongoClient.connect(DB_URL, function (err, db) {
+      if (err) throw err;
+      var collection = db.collection(DB_COLLECTION);
+      fn(err, collection);
+  });
+}
 
 function update() {
 
