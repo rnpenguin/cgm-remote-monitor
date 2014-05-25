@@ -1,7 +1,9 @@
 (function() {
     "use strict";
 
-    var treatments,
+    var retrospectivePredictor = true,
+        latestSGV,
+        treatments,
         padding = { top: 20, right: 10, bottom: 30, left: 10},
         opacity = {current: 1, DAY: 1, NIGHT: 0.5},
         now = Date.now(),
@@ -19,6 +21,9 @@
         brushTimer,
         brushInProgress = false,
         clip,
+        TWENTY_FIVE_MINS_IN_MS = 1500000,
+        THIRTY_MINS_IN_MS = 1800000,
+        FORTY_TWO_MINS_IN_MS = 2520000,
         FOCUS_DATA_RANGE_MS = 12600000;  // 3.5 hours of actual data
 
     // create svg and g to contain the chart contents
@@ -137,7 +142,6 @@
 
     // function to call when context chart is brushed
     function brushed(skipTimer) {
-
         if (!skipTimer) {
             // set a timer to reset focus chart to real-time data
             clearTimeout(brushTimer);
@@ -152,18 +156,55 @@
 
             // ensure that brush updating is with the time range
             if (brushExtent[0].getTime() + FOCUS_DATA_RANGE_MS > d3.extent(data, dateFn)[1].getTime()) {
+                brushExtent[0] = new Date(brushExtent[1].getTime() - FOCUS_DATA_RANGE_MS);
                 d3.select('.brush')
-                    .call(brush.extent([new Date(brushExtent[1].getTime() - FOCUS_DATA_RANGE_MS), brushExtent[1]]));
+                    .call(brush.extent([brushExtent[0], brushExtent[1]]));
             } else {
+                brushExtent[1] = new Date(brushExtent[0].getTime() + FOCUS_DATA_RANGE_MS);
                 d3.select('.brush')
-                    .call(brush.extent([brushExtent[0], new Date(brushExtent[0].getTime() + FOCUS_DATA_RANGE_MS)]));
+                    .call(brush.extent([brushExtent[0], brushExtent[1]]));
             }
+        }
+
+        // get slice of data so that concatenation of predictions do interfere with subsequent updates
+        var focusData = data.slice();
+
+        // predict for retrospective data
+        if (retrospectivePredictor && brushExtent[1].getTime() - THIRTY_MINS_IN_MS < now) {
+            // filter data for -12 and +5 minutes from reference time for retrospective focus data prediction
+            var nowData = data.filter(function(d) {
+                return d.date.getTime() >= brushExtent[1].getTime() - FORTY_TWO_MINS_IN_MS &&
+                    d.date.getTime() <= brushExtent[1].getTime() - TWENTY_FIVE_MINS_IN_MS
+            });
+            if (nowData.length > 1) {
+                var prediction = predictAR(nowData);
+                focusData = focusData.concat(prediction);
+                $('#currentBG')
+                    .text(nowData[nowData.length - 1].sgv)
+                    .css('text-decoration','line-through');
+            } else {
+                $('#currentBG')
+                    .text("---")
+                    .css('text-decoration','none');
+            }
+            $('#currentTime')
+                .text(d3.time.format('%I:%M%p')(brushExtent[1]))
+                .css('text-decoration','line-through');
+        } else if (retrospectivePredictor) {
+            // if the brush comes back into the current time range then it should reset to the current time and sg
+            var dateTime = new Date(now);
+            $('#currentTime')
+                .text(d3.time.format('%I:%M%p')(dateTime))
+                .css('text-decoration','none');
+            $('#currentBG')
+                .text(latestSGV)
+                .css('text-decoration','none');
         }
 
         xScale.domain(brush.extent());
 
         // bind up the focus chart data to an array of circles
-        var focusCircles = focus.selectAll('circle').data(data, dateFn);
+        var focusCircles = focus.selectAll('circle').data(focusData, dateFn);
 
         // if already existing then transition each circle to its new position
         focusCircles.transition()
@@ -174,6 +215,8 @@
 
         // if new circle then just display
         focusCircles.enter().append('circle')
+            .transition()
+            .duration(UPDATE_TRANS_MS)
             .attr('cx', function (d) { return xScale(d.date); })
             .attr('cy', function (d) { return yScale(d.sgv);  })
             .attr('fill', function (d) { return d.color;      })
@@ -215,9 +258,9 @@
         focus.select('.now-line')
             .transition()
             .duration(UPDATE_TRANS_MS)
-            .attr('x1', xScale(new Date(now)))
+            .attr('x1', xScale(new Date(brushExtent[1].getTime() - THIRTY_MINS_IN_MS)))
             .attr('y1', yScale(36))
-            .attr('x2', xScale(new Date(now)))
+            .attr('x2', xScale(new Date(brushExtent[1].getTime() - THIRTY_MINS_IN_MS)))
             .attr('y2', yScale(420));
 
         // update x axis
@@ -573,8 +616,9 @@
         if (d.length > 1) {
             // change the next line so that it uses the prediction if the signal gets lost (max 1/2 hr)
             if (d[0].length) {
-                $('#currentBG').text(d[0][d[0].length - 1].y);
-                $('#bgValue').text(d[0][d[0].length - 1].y);
+                latestSGV = d[0][d[0].length - 1].y;
+                $('#currentBG').text(latestSGV);
+                $('#bgValue').text(latestSGV);
             }
             data = d[0].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'grey'} });
             data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
@@ -717,4 +761,41 @@
                 .text(function (d) { return d.element; })
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // function to predict
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    function predictAR(actual) {
+        console.log(actual);
+        var ONE_MINUTE = 60 * 1000;
+        var FIVE_MINUTES = 5 * ONE_MINUTE;
+        var predicted = [];
+        var BG_REF = 140;
+        var BG_MIN = 36;
+        var BG_MAX = 400;
+        if (actual.length < 2) {
+            var y = [Math.log(actual[0].sgv / BG_REF), Math.log(actual[0].sgv / BG_REF)];
+        } else {
+            var elapsedMins = (actual[1].date - actual[0].date) / ONE_MINUTE;
+            if (elapsedMins < 5.1) {
+                y = [Math.log(actual[0].sgv / BG_REF), Math.log(actual[1].sgv / BG_REF)];
+            } else {
+                y = [Math.log(actual[0].sgv / BG_REF), Math.log(actual[0].sgv / BG_REF)];
+            }
+        }
+        var n = 20;
+        var AR = [-0.723, 1.716];
+        var dt = actual[1].date.getTime();
+        for (var i = 0; i <= n; i++) {
+            y = [y[1], AR[0] * y[0] + AR[1] * y[1]];
+            dt = dt + FIVE_MINUTES;
+            predicted[i] = {
+                date: new Date(dt+3000),
+                sgv: Math.max(BG_MIN, Math.min(BG_MAX, Math.round(BG_REF * Math.exp(y[1])))),
+                color: 'blue'
+            };
+        }
+        return predicted;
+    }
+
 })();
