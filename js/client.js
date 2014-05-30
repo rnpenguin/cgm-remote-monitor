@@ -15,7 +15,7 @@
         prevChartHeight = 0,
         focusHeight,
         contextHeight,
-        UPDATE_TRANS_MS = 750, // milliseconds
+        UPDATE_TRANS_MS = 750, // milliseconds this the transition time for new dots to appear
         brush,
         BRUSH_TIMEOUT = 300000,  // 5 minutes in ms
         brushTimer,
@@ -53,6 +53,7 @@
         .attr('class', 'y axis');
 
     // initial setup of chart when data is first made available
+    // this is like the main method as a lot starts right here
     function initializeCharts() {
 
         // define the parts of the axis that aren't dependent on width or height
@@ -62,6 +63,11 @@
         yScale = d3.scale.log()
             .domain([30, 420]);
 
+       
+       // comments for learning: 
+       // function(d) { return d.date; } returns the date right now will be higher then other values giving the max range. 
+       // This is then passed in to domain
+       // the first time if it has no data so it could return 1970 as it uses epoch dates
         xScale2 = d3.time.scale()
             .domain(d3.extent(data, function (d) { return d.date; }));
 
