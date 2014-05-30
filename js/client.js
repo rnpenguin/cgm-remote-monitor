@@ -67,7 +67,7 @@
 
         yScale2 = d3.scale.log()
             .domain([36, 420]);
-
+//svg is the setup of the canvas or the viewport based on the scale of data
         xAxis = d3.svg.axis()
             .scale(xScale)
             .ticks(4)
@@ -91,12 +91,13 @@
             .orient('right');
 
         // setup a brush
+        //allows you to select part of the canvas, .x .y are the coordinates to select.
         brush = d3.svg.brush()
             .x(xScale2)
             .on('brushstart', brushStarted)
             .on('brush', brushed)
             .on('brushend', brushEnded);
-
+//by setting to true it jumps out of this function and goes the the updateChart function
         updateChart(true);
     }
 
@@ -116,6 +117,7 @@
         var dataRange = d3.extent(data, dateFn);
 
         // update brush and focus chart with recent data
+        //.call means call the function 
         d3.select('.brush')
             .transition()
             .duration(UPDATE_TRANS_MS)
@@ -214,13 +216,14 @@
             .attr('fill', function (d) { return d.color;      });
 
         // if new circle then just display
+        //function d means get the data, this the key piece to display circles
         focusCircles.enter().append('circle')
             .transition()
             .duration(UPDATE_TRANS_MS)
             .attr('cx', function (d) { return xScale(d.date); })
             .attr('cy', function (d) { return yScale(d.sgv);  })
             .attr('fill', function (d) { return d.color;      })
-            .attr('r', 3);
+            .attr('r', 3);  //sets size of the circles
 
         focusCircles.exit()
             .remove();
@@ -242,6 +245,7 @@
             .attr('y2', yScale(30));
 
         // transition open-left line to correct location
+        // also x1 and y1 are coordinates of canvas selection
         focus.select('.open-left')
             .attr('x1', xScale2(brush.extent()[0]))
             .attr('y1', focusHeight)
@@ -267,11 +271,12 @@
         focus.select('.x.axis')
             .call(xAxis);
 
-        // add clipping path so that data stays within axis
+        // add clipping path so that data stays within axis and does not go off the screen
         focusCircles.attr('clip-path', 'url(#clip)');
     }
 
     // called for initial update and updates for resize
+    //this is used everytime after first draw
     function updateChart(init) {
 
         // get current data range
@@ -310,6 +315,7 @@
             if (init) {
 
                 // if first run then just display axis with no transition
+                //transform is basically move to
                 focus.select('.x')
                     .attr('transform', 'translate(0,' + focusHeight + ')')
                     .call(xAxis);
@@ -335,7 +341,7 @@
                 d3.select('.x.brush').select('.resize.e').style('cursor', 'move');
                 d3.select('.x.brush').select('.resize.w').style('cursor', 'move');
 
-                // create a clipPath for when brushing
+                // create a clipPath for when brushing, so last circle is not drawn off the edge
                 clip = charts.append('defs')
                     .append('clipPath')
                     .attr('id', 'clip')
@@ -344,6 +350,7 @@
                     .attr('width', chartWidth);
 
                 // add a line that marks the current time
+                //todo write error checking to make sure data is clean and of good quality
                 focus.append('line')
                     .attr('class', 'now-line')
                     .attr('x1', xScale(new Date(now)))
@@ -549,6 +556,7 @@
             .data(data);
 
         // if already existing then transition each circle to its new position
+        //function d is a callback to display all elements
         contextCircles.transition()
             .duration(UPDATE_TRANS_MS)
             .attr('cx', function (d) { return xScale2(d.date); })
@@ -562,7 +570,7 @@
             .attr('cy', function (d)   { return yScale2(d.sgv);  })
             .attr('fill', function (d) { return d.color;         })
             .style('opacity', function (d)   { return highlightBrushPoints(d) })
-            .attr('r', 2);
+            .attr('r', 2);  //sets size of the circles
 
         contextCircles.exit()
             .remove();
@@ -598,9 +606,10 @@
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     var isInitialData = false;
     var socket = io.connect();
-
+//function d means get the data, now is the date from server.js which updates it constantly
     socket.on('now', function (d) {
         now = d;
+        //converts epoch date
         var dateTime = new Date(now);
         $('#currentTime').text(d3.time.format('%I:%M%p')(dateTime));
 
@@ -611,7 +620,7 @@
             $('body').css({'opacity': opacity.DAY});
         }
     });
-
+//get values, function d is a callback to loop through the array
     socket.on('sgv', function (d) {
         if (d.length > 1) {
             // change the next line so that it uses the prediction if the signal gets lost (max 1/2 hr)
@@ -620,9 +629,12 @@
                 $('#currentBG').text(latestSGV);
                 $('#bgValue').text(latestSGV);
             }
+            //reads the data in loop, gets the values as they arrive and the data is the coordinates
             data = d[0].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'grey'} });
+            //concat takes two arrays and turns into one
             data = data.concat(d[1].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'blue'} }));
             data = data.concat(d[2].map(function (obj) { return { date: new Date(obj.x), sgv: obj.y, color: 'red'} }));
+            //if you want to see the data put a console.log(data); here
             treatments = d[3];
             if (!isInitialData) {
                 isInitialData = true;
