@@ -8,6 +8,7 @@
         opacity = {current: 1, DAY: 1, NIGHT: 0.5},
         now = Date.now(),
         data = [],
+        //function to get the date right now
         dateFn = function (d) { return new Date(d.date)},
         xScale, xScale2, yScale, yScale2,
         xAxis, yAxis, xAxis2, yAxis2,
